@@ -22,7 +22,7 @@ azure_portal_upload_list = pd.DataFrame(columns=columns_list)
 3_2) renamed 된 파일 이동시키고(local Download 공간에서)
 3_3) local Download 된 상태에서 동일한 형상으로 Blob 컨테이너에 업로드 하기
 
-
+ww
 '''
 new_watch_list = []
 watch_sn_list = []
