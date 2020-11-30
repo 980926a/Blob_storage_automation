@@ -24,6 +24,28 @@ new_watch_list = []
 watch_sn_list = []
 
 
+def blob_storage_connect(container_name):
+    connect_str = os.getenv('AZURE_STORAGE_CONNECTION_STRING')
+    # Create the BlobServiceClient object which will be used to create a container client
+    blob_service_client = BlobServiceClient.from_connection_string(connect_str)
+    # Instantiate a ContainerClient
+    container_client = blob_service_client.get_container_client(container_name)
+    blobs_filename_list = container_client.list_blobs()
+    return blobs_filename_list
+
+
+def test(container_name, selected_watch):
+    blobs_filename_list = blob_storage_connect(container_name)
+    for blob_filename in blobs_filename_list:
+        # 새로운 행 초기화
+        save_file_list = list()
+        if re.match(selected_watch, blob_filename.name):
+            print(blob_filename.name, "success")
+        else:
+            print('error', blob_filename.name)
+            pass
+
+
 def cut_str(s, l):
     return [int(s[i:i+l]) for i in range(0, len(s), l)]
 
@@ -36,8 +58,9 @@ def strdate_to_datetime(str_date, str_time):
 
 
 try:
+
+    '''스토리지 계정 가운데, 사용할 storage 계정의 연결 문자열 저장 '''
     connect_str = os.getenv('AZURE_STORAGE_CONNECTION_STRING')
-    print(connect_str)
 
     # Create the BlobServiceClient object which will be used to create a container client
     blob_service_client = BlobServiceClient.from_connection_string(connect_str)
@@ -51,25 +74,6 @@ try:
         # 새로운 행 초기화
         save_file_list = list()
 
-        '''
-        파일 이름 수정해야 하는 부분
-        # inhaler의 경우
-        # example)
-        # 20IHPA00001A/200630_\d\d\d\d\d\d_F73C21FD7B10.mp4
-        # 20IHPA00001A/200701_\d\d\d\d\d\d_F73C21FD7B10.mp4
-        # 20IHPA00001A/200702_\d\d\d\d\d\d_F73C21FD7B10.mp4
-
-        # medication
-        # example)
-        # 20IHPA00001A/200630_\d\d\d\d\d\d_D6A00695233D.mp4
-        # 20IHPA00001A/200701_\d\d\d\d\d\d_D6A00695233D.mp4
-        # 20IHPA00001A/200702_\d\d\d\d\d\d_D6A00695233D.mp4
-
-
-        # re.match('20IHPA00001A/200701_\d\d\d\d\d\d_F73C21FD7B10', blob_filename.name):
-
-
-        '''
         if re.match('2020-11-24/20IHPA', blob_filename.name):
             # watch_sn 중복 제거
             print(blob_filename.name, "success")
@@ -113,10 +117,6 @@ try:
             upload_time_China = str_uploaded_datetime_China.split(
                 ' ')[-1].split('+')[0]
 
-            '''
-            timedelta type 임.. 그래서 str로 변형 '-1 day, 5:15:15' 일 경우가 있을 경우는
-            split(',') 한다음 len 을 해보면 2이상이 나오면  
-            '''
             test_diff_time_calculation = record_watch_datetime_null - uploaded_datetime_China
             str_test_diff_time_calculation = str(test_diff_time_calculation)
             diff_time_calculation = uploaded_datetime_China - record_watch_datetime_null
