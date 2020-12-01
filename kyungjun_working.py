@@ -38,7 +38,6 @@ def test(container_name, selected_watch):
     blobs_filename_list = blob_storage_connect(container_name)
     for blob_filename in blobs_filename_list:
         # 새로운 행 초기화
-        save_file_list = list()
         if re.match(selected_watch, blob_filename.name):
             print(blob_filename.name, "success")
         else:
@@ -70,10 +69,9 @@ try:
         "smartwatchdata")
 
     blobs_filename_list = container_client.list_blobs()
+    lst_blobs_filename_list = list(blobs_filename_list)
     for blob_filename in blobs_filename_list:
         # 새로운 행 초기화
-        save_file_list = list()
-
         if re.match('2020-11-24/20IHPA', blob_filename.name):
             # watch_sn 중복 제거
             print(blob_filename.name, "success")
@@ -143,6 +141,7 @@ try:
                  'upload_time_China': upload_time_China,
                  'str_diff_time_calcutaion': str_diff_time_calcutaion, },
                 ignore_index=True)
+
             azure_portal_upload_list.to_excel(
                 "1124_upload_check.xlsx", encoding='utf-8')
 
