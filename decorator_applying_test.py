@@ -9,20 +9,7 @@ import pandas as pd
 import numpy as np
 
 
-column_list = ['watch_number',
-               'str_record_watch_datetime',
-               'record_day_null_timezone',
-               'record_time_null_timezone',
-               'beacon_mac_addr_number_4',
-               'str_uploaded_datetime_KST',
-               'upload_day_KST',
-               'upload_time_KST',
-               'str_uploaded_datetime_China',
-               'upload_day_China',
-               'upload_time_China',
-               'str_diff_time_calcutaion']
-
-init_dataframe = pd.DataFrame(columns=column_list)
+list_of_dataframe = []
 
 
 def blob_storage_connect(container_name):
@@ -53,27 +40,23 @@ def making_dataframe(col_dict):
 # https://stackoverflow.com/questions/56343679/append-dataframe-with-column-names-alone-to-another-dataframe-with-data
 
 
-def adding_data_to_datafrmae(root_data, add_data):
-    if root_data.columns == add_data.columns:
-        print('true')
-        root_data = root_data.append(add_data, ignore_index=True)
-        return root_data
-    else:
-        print('false')
+def adding_data_to_datafrmae(before_data, add_data):
+    result_data = before_data.append(add_data, ignore_index=True)
+    adding_data_to_datafrmae(adding_data_to_datafrmae(before_data, add_data))
+
 
 # 감싸는 역할을 할 decoratior 선언
 
 
 def data_frame_decorator(a_func):
-    def wrapTheFunction(container_name, selected_watch):
+    def wrapTheFunction(container_name, selected_watch, filename):
         # a_func return 값이 data_frame
-        s = a_func(container_name, selected_watch)
-        print(s)
+        a_func(container_name, selected_watch, filename)
     return wrapTheFunction
 
 
 @data_frame_decorator
-def blob_info(container_name, selected_watch):
+def blob_info(container_name, selected_watch, filename):
     blobs_filename_list = blob_storage_connect(container_name)
     lst_blobs_filename_list = list(blobs_filename_list)
     for idx, blob_filename in enumerate(lst_blobs_filename_list):
@@ -141,7 +124,8 @@ def blob_info(container_name, selected_watch):
                                                        'upload_day_China': upload_day_China,
                                                        'upload_time_China': upload_time_China,
                                                        'str_diff_time_calcutaion': str_diff_time_calcutaion, })
-                adding_data_to_datafrmae(init_dataframe, dataframe_for_file)
+                list_of_dataframe.append(dataframe_for_file)
+                return
             else:
                 print('error', blob_filename.name)
                 break
@@ -211,7 +195,11 @@ def blob_info(container_name, selected_watch):
                                                        'upload_day_China': upload_day_China,
                                                        'upload_time_China': upload_time_China,
                                                        'str_diff_time_calcutaion': str_diff_time_calcutaion, })
-                adding_data_to_datafrmae(init_dataframe, dataframe_for_file)
+                list_of_dataframe.append(dataframe_for_file)
+                final_dataframe = pd.concat(list_of_dataframe)
+                final_dataframe.to_excel(
+                    "{}.xlsx".format(filename), encoding='utf-8')
+
                 continue
             else:  # 조건과 일치하지 않을 때
                 print('error', blob_filename.name)
@@ -220,4 +208,4 @@ def blob_info(container_name, selected_watch):
 
 if __name__ == "__main__":
     blob_storage_connect("smartwatchdata")
-    blob_info("smartwatchdata", "2010-01-01/20IHPA")
+    blob_info("smartwatchdata", "2020-11-24/20IHPA", "kyungjun")
