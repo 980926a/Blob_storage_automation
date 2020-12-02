@@ -6,8 +6,8 @@ import time
 from azure.storage.blob import BlobServiceClient, BlobClient, ContainerClient
 from datetime import datetime
 from pytz import timezone, utc
+# modin 쓰고 싶은데 왜 modin 안되는지 모르겟음 ㅜㅜ
 import pandas as pd
-
 
 list_of_dataframe = list()
 
@@ -44,11 +44,18 @@ def making_dataframe(col_dict):
     return data_frame
 
 
+def converting_df_to_excel(df, filename):
+    return df.to_excel("{}.xlsx".format(filename), encoding='utf-8')
+
+
 # lambda로 변형하는것도 해야함 . filter 에 parameter 2개 던져서 하는걸 사용함
 # https://wayhome25.github.io/cs/2017/04/03/cs-03/
 # https://stackoverflow.com/questions/34609935/passing-a-function-with-two-arguments-to-filter-in-python/34610018
 
 def filter_work(search_word, check_list):
+    # list comprehension , map, reduce, filter, lambda 자유롭게 사용할 수 있도록 익숙해질 것
+    # 정규표현식 고도화 필요
+    # '2010-01-01/20IHPA' ---> blob 예시
     filtered_list = [x for x in check_list if re.match(search_word, x.name)]
     for idx, blob_attr in enumerate(filtered_list):
         if idx+1 == len(filtered_list):  # 마지막 원소
@@ -114,9 +121,11 @@ def filter_work(search_word, check_list):
                                                    'upload_time_China': upload_time_China,
                                                    'str_diff_time_calcutaion': str_diff_time_calcutaion, })
             list_of_dataframe.append(dataframe_for_file)
+            # reset_index 설정 해서 index 순서대로 들어간건지 확인 함. 설정해야지 0 , 1, 2, 3 으로 들어가고 설정 안하면 0, 0 ,0 으로 들어감
             final_dataframe = pd.concat(
                 list_of_dataframe).reset_index(drop=True)
-            final_dataframe.to_excel("{}.xlsx".format('tk'), encoding='utf-8')
+            return final_dataframe
+
         else:
             watch_sn = blob_attr.name.split('/')[-1].split('_')[0]
             record_day_null_timezone = blob_attr.name.split(
@@ -183,4 +192,7 @@ def filter_work(search_word, check_list):
 
 
 if __name__ == "__main__":
-    filter_work('2020-11-24/20IHPA', blob_storage_connect('smartwatchdata'))
+    # argparse 적용 예정
+    excel_source = filter_work(
+        '2010-01-01/20IHPA', blob_storage_connect('smartwatchdata'))
+    converting_df_to_excel(excel_source, 'kyungjun_hungry')
