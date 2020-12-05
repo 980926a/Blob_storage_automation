@@ -1,13 +1,14 @@
 from logging import exception
+import argparse
 import os
-import uuid
 import re
-import time
 from azure.storage.blob import BlobServiceClient, BlobClient, ContainerClient
 from datetime import datetime
-from pytz import timezone, utc
+from pytz import timezone
 # modin 쓰고 싶은데 왜 modin 안되는지 모르겟음 ㅜㅜ
 import pandas as pd
+import sweetviz as sv
+
 
 list_of_dataframe = list()
 
@@ -46,6 +47,11 @@ def making_dataframe(col_dict):
 
 def converting_df_to_excel(df, filename):
     return df.to_excel("{}.xlsx".format(filename), encoding='utf-8')
+
+
+def converting_df_to_html(df):
+    my_report = sv.analyze(df)
+    return my_report.show_html()
 
 
 # lambda로 변형하는것도 해야함 . filter 에 parameter 2개 던져서 하는걸 사용함
@@ -193,8 +199,18 @@ def filter_work(search_word, check_list):
 
 if __name__ == "__main__":
     # argparse 적용 예정
+    parser = argparse.ArgumentParser(
+        description="smartwatch_upload_file_check")
+    # argument는 원하는 만큼 추가
+    parser.add_argument(
+        "blob_name", help="blob_name in the container", type=str)
+    parser.add_argument("Container_name", help="cotainer_name", type=str)
+    parser.add_argument("filename", help="excel_file_name", type=str)
+    args = parser.parse_args()
     # 개별 스토리지 계정 - 연결 문자열 입력(보안 유의)
 
     excel_source = filter_work(
         '2010-01-01/20IHPA', blob_storage_connect('smartwatchdata'))
+    converting_df_to_html(excel_source)
     converting_df_to_excel(excel_source, 'kyungjun_hungry')
+    # twine을 이용한 패키지 배포
