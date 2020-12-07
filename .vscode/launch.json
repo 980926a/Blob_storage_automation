@@ -10,7 +10,7 @@
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
-            "args": ["--print-number","5"]
+            "args": ["2020-12-07/20IHPA","smartwatchdata", "20201207_test"]
         }
     ]
 }

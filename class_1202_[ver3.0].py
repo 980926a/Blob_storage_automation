@@ -49,9 +49,11 @@ def converting_df_to_excel(df, filename):
     return df.to_excel("{}.xlsx".format(filename), encoding='utf-8')
 
 
+'''
 def converting_df_to_html(df):
     my_report = sv.analyze(df)
     return my_report.show_html()
+'''
 
 
 # lambda로 변형하는것도 해야함 . filter 에 parameter 2개 던져서 하는걸 사용함
@@ -204,13 +206,22 @@ if __name__ == "__main__":
     # argument는 원하는 만큼 추가
     parser.add_argument(
         "blob_name", help="blob_name in the container", type=str)
-    parser.add_argument("Container_name", help="cotainer_name", type=str)
-    parser.add_argument("filename", help="excel_file_name", type=str)
+    parser.add_argument("container_name", help="cotainer_name", type=str)
+    parser.add_argument("save_filename", help="excel_file_name", type=str)
+
     args = parser.parse_args()
     # 개별 스토리지 계정 - 연결 문자열 입력(보안 유의)
 
+    '''
+    argparse 적용 예시
+    '2010-01-01/20IHPA' = args.blob_name
+    'smartwatchdata' = args.container_name
+    '20201207_argparse_excel' = args.save_filename
+    '''
+
     excel_source = filter_work(
-        '2010-01-01/20IHPA', blob_storage_connect('smartwatchdata'))
-    converting_df_to_html(excel_source)
-    converting_df_to_excel(excel_source, 'kyungjun_hungry')
+        args.blob_name, blob_storage_connect(args.container_name))
+    # sweetviz 패키지 사용할 경우만 활성화
+    # converting_df_to_html(excel_source)
+    converting_df_to_excel(excel_source, args.save_filename)
     # twine을 이용한 패키지 배포
