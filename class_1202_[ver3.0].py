@@ -7,7 +7,7 @@ from datetime import datetime
 from pytz import timezone
 # modin 쓰고 싶은데 왜 modin 안되는지 모르겟음 ㅜㅜ
 import pandas as pd
-import sweetviz as sv
+# import sweetviz as sv
 
 
 list_of_dataframe = list()
@@ -44,11 +44,12 @@ def making_dataframe(col_dict):
     data_frame = pd.DataFrame([col_dict])
     return data_frame
 
-
+# https://blockdmask.tistory.com/429
 def converting_df_to_excel(df, filename):
-    return df.to_excel("{}.xlsx".format(filename), encoding='utf-8')
+    return df.to_excel(f'{filename}.xlsx',encoding='utf-8')
+    # return df.to_excel("{}.xlsx".format(filename), encoding='utf-8')
 
-
+#  return df.to_excel(f'{filename}.xlsx',encoding='utf-8')
 '''
 def converting_df_to_html(df):
     my_report = sv.analyze(df)
@@ -68,8 +69,7 @@ def filter_work(search_word, check_list):
     for idx, blob_attr in enumerate(filtered_list):
         if idx+1 == len(filtered_list):  # 마지막 원소
             watch_sn = blob_attr.name.split('/')[-1].split('_')[0]
-            record_day_null_timezone = blob_attr.name.split(
-                '/')[-1].split('_')[1]
+            record_day_null_timezone = blob_attr.name.split('/')[-1].split('_')[1]
             record_time_null_timezone = blob_attr.name.split(
                 '/')[-1].split('_')[2]
             # str 타입을 datetime으로 변경
