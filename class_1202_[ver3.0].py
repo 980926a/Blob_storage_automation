@@ -30,8 +30,9 @@ connect_str = input("Azure portal 내 해당 스토리지 계정의 연결 문�
 os.system('setx AZURE_STORAGE_CONNECTION_STRING {}'.format(connect_str))
 '''
 
-list_of_dataframe = []
-# list_of_dataframe = list()
+list_of_dataframe = dict()
+# git stash 확인용
+# list_of_dataframe = []
 # git stash test
 # git prune 정확하게 알고 사용하기
 # git pull 햇을때 최신 파일 안가져와서 git commit 하려니 최신파일이라고 오류났음
