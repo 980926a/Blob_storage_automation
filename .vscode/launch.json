@@ -11,7 +11,11 @@
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
+<<<<<<< Updated upstream
             "args": ["2020-12-08/20IHPA","smartwatchdata", "20201208_test"]
+=======
+            "args": ["2020-12-09/20IHPA", "smartwatchdata", "china", "china_test_1210"]
+>>>>>>> Stashed changes
         }
     ]
 }

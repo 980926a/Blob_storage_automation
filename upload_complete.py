@@ -5,30 +5,8 @@ import re
 from azure.storage.blob import BlobServiceClient, BlobClient, ContainerClient
 from datetime import datetime
 from pytz import timezone
-# modin 쓰고 싶은데 왜 modin 안되는지 모르겟음 ㅜㅜ
-# 패키지 호환 문제 인듯 pip 내
 import pandas as pd
-# import sweetviz as sv
 
-
-# 연결문자열 입력 여부 확인
-# echo %AZURE_STORAGE_CONNECTION_STRING%
-# 입력된 환경변수가 있는 경우 return 값 시작이 %로 시작 안함
-# 입력된 환경변수가 없는 경우 retrun 값 시작이 %로 시작함
-# 연결문자열을 입력하도록 해야함
-# 연결문자열 제대로 입력한 경우
-# SUCCESS: Specified value was saved. 메시지 출력됨
-
-'''
-프로그램 다시 시작
-환경 변수가 추가되면 이 환경 변수를 읽어야 하는 실행 중인 프로그램을 다시 시작합니다. 예를 들어 개발 환경 또는 편집기를 다시 시작한 후에 계속합니다.
-'''
-'''
-12월 10일 작업 예정
-# cmd 창 내 명령어 실행하는 법 - subprocess, os
-connect_str = input("Azure portal 내 해당 스토리지 계정의 연결 문자열을 입력하세요:")
-os.system('setx AZURE_STORAGE_CONNECTION_STRING {}'.format(connect_str))
-'''
 
 list_of_dataframe = list()
 
@@ -64,45 +42,12 @@ def making_dataframe(col_dict):
     data_frame = pd.DataFrame([col_dict])
     return data_frame
 
-# https://blockdmask.tistory.com/429
-
-# 예외 처리 만들어야 함
-# 데이터 없는 경우
-#
-
 
 def converting_df_to_excel(df, filename):
-    return df.to_excel(f'{filename}.xlsx', encoding='utf-8')
-    # return df.to_excel("{}.xlsx".format(filename), encoding='utf-8')
+    return df.to_excel("{}.xlsx".format(filename), encoding='utf-8')
 
 
-#  return df.to_excel(f'{filename}.xlsx',encoding='utf-8')
-'''
-def converting_df_to_html(df):
-    my_report = sv.analyze(df)
-    return my_report.show_html()
-'''
-
-
-# lambda로 변형하는것도 해야함 . filter 에 parameter 2개 던져서 하는걸 사용함
-# https://wayhome25.github.io/cs/2017/04/03/cs-03/
-# https://stackoverflow.com/questions/34609935/passing-a-function-with-two-arguments-to-filter-in-python/34610018
-# if else in a list comprehension [duplicate]
-# https://stackoverflow.com/questions/4406389/if-else-in-a-list-comprehension
-# [x+1 if x >= 45 else x+5 for x in l]
-
-# 작성중 (주말 할 예정 . list comprehension 내 else 없이 작성한거 확인해야함 V)
-# 원래 코드 : [x for x in check_list if re.match(search_word, x.name)]
-# 1) re.match를 통과한
-
-
-def filter_work(search_word, check_list, country):
-    # list comprehension , map, reduce, filter, lambda 자유롭게 사용할 수 있도록 익숙해질 것
-    # 정규표현식 고도화 필요
-    # '2010-01-01/20IHPA' ---> blob 예시
-    # [x if re.match(search_word, x.name)for x in check_list ]
-    # [x for x in check_list if re.match(search_word, x.name) else pass]
-
+def filter_work(search_word, check_list):
     filtered_list = [x for x in check_list if re.match(search_word, x.name)]
     for idx, blob_attr in enumerate(filtered_list):
         if idx+1 == len(filtered_list):  # 마지막 원소
@@ -111,25 +56,15 @@ def filter_work(search_word, check_list, country):
                 '/')[-1].split('_')[1]
             record_time_null_timezone = blob_attr.name.split(
                 '/')[-1].split('_')[2]
-            # str 타입을 datetime으로 변경
-
             watch_datetime_datetime_null = strdate_to_datetime(
                 record_day_null_timezone, record_time_null_timezone)
-            # pytz.all_timezones ---- timezone 적용할 수 있는 목록 볼 수 있음
-            # http://abh0518.net/tok/?p=635 ---------- timestamp 같이 활용하는 방안
 
-            # watch가 사용중인 시간대를 나라 입력을 받아서 분기 해 줌
-            # 우선은 중국을 default로 설정
-            if country == 'korea':
-                record_watch_time = timezone('Asia/Seoul')
-            elif country == 'japan':
-                record_watch_time = timezone('Asia/Tokyo')
-            else:
-                record_watch_time = timezone('Asia/Shanghai')
+            # watch 가 중국시각대일때
+            record_watch_china = timezone('Asia/Shanghai')
 
-            # watch 시간대에 따라서 변경
+            # watch가 중국 시각대이라고 가정하고 계산
             record_watch_datetime_null = watch_datetime_datetime_null.astimezone(
-                record_watch_time)
+                record_watch_china)
             str_record_watch_datetime = str(record_watch_datetime_null)
 
             # beacon 정보
@@ -153,8 +88,6 @@ def filter_work(search_word, check_list, country):
                 ' ')[-1].split('+')[0]
             diff_time_calculation = uploaded_datetime_China - record_watch_datetime_null
             str_diff_time_calcutaion = str(diff_time_calculation)
-
-            # https://www.kite.com/python/answers/how-to-convert-a-timedelta-to-days,-hours,-and-minutes-in-python
 
             if not beacon_mac_addr_number_4:
                 beacon_mac_addr_number_4 = 'null'
@@ -174,7 +107,6 @@ def filter_work(search_word, check_list, country):
                                                    'upload_time_China': upload_time_China,
                                                    'str_diff_time_calcutaion': str_diff_time_calcutaion, })
             list_of_dataframe.append(dataframe_for_file)
-            # reset_index 설정 해서 index 순서대로 들어간건지 확인 함. 설정해야지 0 , 1, 2, 3 으로 들어가고 설정 안하면 0, 0 ,0 으로 들어감
             final_dataframe = pd.concat(
                 list_of_dataframe).reset_index(drop=True)
             return final_dataframe
@@ -189,21 +121,13 @@ def filter_work(search_word, check_list, country):
 
             watch_datetime_datetime_null = strdate_to_datetime(
                 record_day_null_timezone, record_time_null_timezone)
-            # pytz.all_timezones ---- timezone 적용할 수 있는 목록 볼 수 있음
-            # http://abh0518.net/tok/?p=635 ---------- timestamp 같이 활용하는 방안
 
-            # watch가 사용중인 시간대를 나라 입력을 받아서 분기 해 줌
-            # 우선은 중국을 default로 설정
-            if country == 'korea':
-                record_watch_time = timezone('Asia/Seoul')
-            elif country == 'japan':
-                record_watch_time = timezone('Asia/Tokyo')
-            else:
-                record_watch_time = timezone('Asia/Shanghai')
+            # watch 가 중국시각대일때
+            record_watch_china = timezone('Asia/Shanghai')
 
-            # watch 시간대에 따라서 변경
+            # watch가 중국 시각대이라고 가정하고 계산
             record_watch_datetime_null = watch_datetime_datetime_null.astimezone(
-                record_watch_time)
+                record_watch_china)
             str_record_watch_datetime = str(record_watch_datetime_null)
 
             # beacon 정보
@@ -227,8 +151,6 @@ def filter_work(search_word, check_list, country):
                 ' ')[-1].split('+')[0]
             diff_time_calculation = uploaded_datetime_China - record_watch_datetime_null
             str_diff_time_calcutaion = str(diff_time_calculation)
-
-            # https://www.kite.com/python/answers/how-to-convert-a-timedelta-to-days,-hours,-and-minutes-in-python
 
             if not beacon_mac_addr_number_4:
                 beacon_mac_addr_number_4 = 'null'
@@ -251,38 +173,16 @@ def filter_work(search_word, check_list, country):
 
 
 if __name__ == "__main__":
-    # argparse 적용 완료
-    # argparse 공부할때 참고한 블로그
-    # https://newsight.tistory.com/76 정리 잘되어 잇음
-    '''
-    augment-data-length 이렇게 된 argument는 parsing되고나면 저절로 augment_data_length 즉 '-'이 '_'으로 바뀌면서 변수명이 정해진다.
-
-    https://github.com/python/cpython/blob/0cd5bff6b7da3118d0c5a88fc2b80f80eb7c3059/Lib/argparse.py#L1556    
-    '''
 
     parser = argparse.ArgumentParser(
         description="smartwatch_upload_file_check")
-    # argument는 원하는 만큼 추가
     parser.add_argument(
         "blob_name", help="blob_name in the container", type=str)
     parser.add_argument("container_name", help="cotainer_name", type=str)
-    parser.add_argument(
-        "timezone", help="country where the watch is used", type=str)
     parser.add_argument("save_filename", help="excel_file_name", type=str)
 
     args = parser.parse_args()
-    # 개별 스토리지 계정 - 연결 문자열 입력(보안 유의)
-
-    '''
-    argparse 적용 예시
-    '2010-01-01/20IHPA' = args.blob_name
-    'smartwatchdata' = args.container_name
-    '20201207_argparse_excel' = args.save_filename
-    '''
 
     excel_source = filter_work(
-        args.blob_name, blob_storage_connect(args.container_name), args.timezone)
-    # sweetviz 패키지 사용할 경우만 활성화
-    # converting_df_to_html(excel_source)
+        args.blob_name, blob_storage_connect(args.container_name))
     converting_df_to_excel(excel_source, args.save_filename)
-    # twine을 이용한 패키지 배포
