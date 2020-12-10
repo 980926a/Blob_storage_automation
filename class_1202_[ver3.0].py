@@ -31,6 +31,14 @@ os.system('setx AZURE_STORAGE_CONNECTION_STRING {}'.format(connect_str))
 '''
 
 list_of_dataframe = list()
+# list_of_dataframe = []
+# git stash test 
+# git prune 정확하게 알고 사용하기
+# git pull 햇을때 최신 파일 안가져와서 git commit 하려니 최신파일이라고 오류났음
+# git prune 하고 git pull 하니 촤신 가지고 왔음
+# git pull default 값 알기
+
+
 
 
 def blob_storage_connect(container_name):
