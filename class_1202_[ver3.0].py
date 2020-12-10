@@ -8,7 +8,7 @@ from pytz import timezone
 # modin 쓰고 싶은데 왜 modin 안되는지 모르겟음 ㅜㅜ
 # 패키지 호환 문제 인듯 pip 내
 import pandas as pd
-# import sweetviz as sv
+import sweetviz as sv
 
 
 # 연결문자열 입력 여부 확인
@@ -32,13 +32,12 @@ os.system('setx AZURE_STORAGE_CONNECTION_STRING {}'.format(connect_str))
 
 list_of_dataframe = list()
 # list_of_dataframe = []
-# git stash test 
+# git stash test
 # git prune 정확하게 알고 사용하기
 # git pull 햇을때 최신 파일 안가져와서 git commit 하려니 최신파일이라고 오류났음
 # git prune 하고 git pull 하니 촤신 가지고 왔음
 # git pull default 값 알기
-
-
+# 경준 추가
 
 
 def blob_storage_connect(container_name):
