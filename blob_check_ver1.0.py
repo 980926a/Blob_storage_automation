@@ -8,11 +8,11 @@ from pytz import timezone
 # modin 쓰고 싶은데 왜 modin 안되는지 모르겟음 ㅜㅜ
 # 패키지 호환 문제 인듯 pip 내
 import pandas as pd
-import sweetviz as sv
 
 
-# 연결문자열 입력 여부 확인
-# echo %AZURE_STORAGE_CONNECTION_STRING%
+# 연결문자열 입력 여부 확인 : echo %AZURE_STORAGE_CONNECTION_STRING%
+
+
 # 입력된 환경변수가 있는 경우 return 값 시작이 %로 시작 안함
 # 입력된 환경변수가 없는 경우 retrun 값 시작이 %로 시작함
 # 연결문자열을 입력하도록 해야함
@@ -30,20 +30,38 @@ connect_str = input("Azure portal 내 해당 스토리지 계정의 연결 문�
 os.system('setx AZURE_STORAGE_CONNECTION_STRING {}'.format(connect_str))
 '''
 
-list_of_dataframe = dict()
-# git stash 확인용
-# list_of_dataframe = []
-# git stash test
+
+list_of_dataframe = list()
+
+
 # git prune 정확하게 알고 사용하기
 # git pull 햇을때 최신 파일 안가져와서 git commit 하려니 최신파일이라고 오류났음
 # git prune 하고 git pull 하니 촤신 가지고 왔음
 # git pull default 값 알기
+# https://blog.leocat.kr/notes/2016/01/21/git-config-default-remote-branch
 # 경준 추가
+#
+
+# 스토리지 계정 - 현재 devdatas 랑 chinaproject가 있음
+# 스토리지 계정이랑 AZURE_STORAGE_CONNECTION_STRING.split(';')[1].split('=')[-1] 비교해서
+#
+
+
+# logic A : 입력되어 있는 연결 문자열도 검증
+# logic B : 연결 문자열이 없는 경우는 연결 문자열 입력을 받고, 연결 문자열
+
+
+# 입력값 재입력하게 할 경우 초기화하는 과정 필요함!!!
+# debug 모드에서 문제가 됨!
+# 왜 debug 모드에서 문제가 되냐면, 가상환경 모드를 실행시키는 부분의 'C:/ProgramData/Anaconda3/Scripts/activate' 이 명령문이 변수로 들어갈 수 있어서!
+# 파이썬 클래스 공부!
 
 
 def blob_storage_connect(container_name):
     try:
         connect_str = os.getenv('AZURE_STORAGE_CONNECTION_STRING')
+        print(connect_str)
+        print('등록된 연결 문자열이 있습니다.')
         # Create the BlobServiceClient object which will be used to create a container client
         blob_service_client = BlobServiceClient.from_connection_string(
             connect_str)
@@ -52,9 +70,42 @@ def blob_storage_connect(container_name):
             container_name)
         blobs_list = container_client.list_blobs()
         return blobs_list
-    except Exception as ex:
-        print('Exception:')
-        print(ex)
+    except:
+
+        '''
+        class 사용해서 변수 값 초기화 하는 거 __init__
+        magic method 공부할 것
+        '''
+
+        print('등록된 연결 문자열이 없습니다.')
+        connect_str = input("Azure portal 내 해당 스토리지 계정의 연결 문자열을 입력하세요:")
+        if connect_str.startswith('DefaultEndpointsProtocol'):
+            os.system(
+                'setx AZURE_STORAGE_CONNECTION_STRING {}'.format(connect_str))
+            try:
+                blob_service_client = BlobServiceClient.from_connection_string(
+                    connect_str)
+                container_client = blob_service_client.get_container_client(
+                    container_name)
+                blobs_list = container_client.list_blobs()
+                return blobs_list
+            except Exception as ex:
+                print('Exception:')
+                print(ex)
+        else:
+            connect_str = input("잘못된 연결문자열을 입력하셨습니다. 확인하시고 다시 입력하세요:")
+            os.system(
+                'setx AZURE_STORAGE_CONNECTION_STRING {}'.format(connect_str))
+            try:
+                blob_service_client = BlobServiceClient.from_connection_string(
+                    connect_str)
+                container_client = blob_service_client.get_container_client(
+                    container_name)
+                blobs_list = container_client.list_blobs()
+                return blobs_list
+            except Exception as ex:
+                print('Exception:')
+                print(ex)
 
 
 def cut_str(s, l):
@@ -80,8 +131,12 @@ def making_dataframe(col_dict):
 
 
 def converting_df_to_excel(df, filename):
-    return df.to_excel(f'{filename}.xlsx', encoding='utf-8')
-    # return df.to_excel("{}.xlsx".format(filename), encoding='utf-8')
+    try:
+        print('excel 파일을 만들고 있습니다.')
+        return df.to_excel(f'{filename}.xlsx', encoding='utf-8')
+        # return df.to_excel("{}.xlsx".format(filename), encoding='utf-8')
+    except:
+        print('데이터가 없는 것으로 파악됩니다')
 
 
 #  return df.to_excel(f'{filename}.xlsx',encoding='utf-8')
@@ -185,6 +240,8 @@ def filter_work(search_word, check_list, country):
             # reset_index 설정 해서 index 순서대로 들어간건지 확인 함. 설정해야지 0 , 1, 2, 3 으로 들어가고 설정 안하면 0, 0 ,0 으로 들어감
             final_dataframe = pd.concat(
                 list_of_dataframe).reset_index(drop=True)
+            # https://stackoverflow.com/questions/20167930/start-index-at-1-for-pandas-dataframe/45883232
+            final_dataframe.index += 1
             return final_dataframe
 
         else:
