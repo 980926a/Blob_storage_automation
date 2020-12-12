@@ -8,7 +8,7 @@ from pytz import timezone
 # modin 쓰고 싶은데 왜 modin 안되는지 모르겟음 ㅜㅜ
 # 패키지 호환 문제 인듯 pip 내
 import pandas as pd
-
+import sys
 
 # 연결문자열 입력 여부 확인 : echo %AZURE_STORAGE_CONNECTION_STRING%
 
@@ -43,35 +43,40 @@ list_of_dataframe = list()
 #
 
 # 스토리지 계정 - 현재 devdatas 랑 chinaproject가 있음
-# 스토리지 계정이랑 AZURE_STORAGE_CONNECTION_STRING.split(';')[1].split('=')[-1] 비교해서
+# 스토리지 계정이랑
 #
 
 
-# logic A : 입력되어 있는 연결 문자열도 검증
-# logic B : 연결 문자열이 없는 경우는 연결 문자열 입력을 받고, 연결 문자열
+'''
+Logic 
+1) 연결 문자열이 있는지 check
+2) 해당 연결 문자열이 내가 원하는 storage account의 연결문자열인지 확인 -> 아닐 경우 입력받기
+3) 컨테이너 이름 입력
+4) blob 입력
+
+'''
 
 
-# 입력값 재입력하게 할 경우 초기화하는 과정 필요함!!!
-# debug 모드에서 문제가 됨!
-# 왜 debug 모드에서 문제가 되냐면, 가상환경 모드를 실행시키는 부분의 'C:/ProgramData/Anaconda3/Scripts/activate' 이 명령문이 변수로 들어갈 수 있어서!
-# 파이썬 클래스 공부!
-
-
-def blob_storage_connect(container_name):
+def blob_storage_connect(project, container_name):
     try:
         connect_str = os.getenv('AZURE_STORAGE_CONNECTION_STRING')
-        print(connect_str)
         print('등록된 연결 문자열이 있습니다.')
-        # Create the BlobServiceClient object which will be used to create a container client
-        blob_service_client = BlobServiceClient.from_connection_string(
-            connect_str)
-        # Instantiate a ContainerClient
-        container_client = blob_service_client.get_container_client(
-            container_name)
-        blobs_list = container_client.list_blobs()
-        return blobs_list
+        if project == connect_str.split(';')[1].split('=')[-1]:
+            # Create the BlobServiceClient object which will be used to create a container client
+            print('{} project에서 데이터를 추출하겠습니다.'.format(project))
+            blob_service_client = BlobServiceClient.from_connection_string(
+                connect_str)
+            # Instantiate a ContainerClient
+            container_client = blob_service_client.get_container_client(
+                container_name)
+            blobs_list = container_client.list_blobs()
+            return blobs_list
+        else:
+            print("현재 등록된 연결문자열은 {} project 입니다. 새로운 연결 문자열을 입력해주세요".format(
+                connect_str.split(';')[1].split('=')[-1]))
+            os.system('setx AZURE_STORAGE_CONNECTION_STRING ""')
+            # 창을 종료 시켜야 함 2020년 오후 3시 7분 우선 장고 공부하다가 다시 할 예정
     except:
-
         '''
         class 사용해서 변수 값 초기화 하는 거 __init__
         magic method 공부할 것
@@ -107,6 +112,15 @@ def blob_storage_connect(container_name):
                 print('Exception:')
                 print(ex)
 
+# logic A : 입력되어 있는 연결 문자열도 검증
+# logic B : 연결 문자열이 없는 경우는 연결 문자열 입력을 받고, 연결 문자열
+
+
+# 입력값 재입력하게 할 경우 초기화하는 과정 필요함!!!
+# debug 모드에서 문제가 됨!
+# 왜 debug 모드에서 문제가 되냐면, 가상환경 모드를 실행시키는 부분의 'C:/ProgramData/Anaconda3/Scripts/activate' 이 명령문이 변수로 들어갈 수 있어서!
+# 파이썬 클래스 공부!
+
 
 def cut_str(s, l):
     return [int(s[i:i+l]) for i in range(0, len(s), l)]
@@ -127,7 +141,6 @@ def making_dataframe(col_dict):
 
 # 예외 처리 만들어야 함
 # 데이터 없는 경우
-#
 
 
 def converting_df_to_excel(df, filename):
@@ -330,6 +343,7 @@ if __name__ == "__main__":
     # argument는 원하는 만큼 추가
     parser.add_argument(
         "blob_name", help="blob_name in the container", type=str)
+    parser.add_argument("project_name", help="storage_account_name", type=str)
     parser.add_argument("container_name", help="cotainer_name", type=str)
     parser.add_argument(
         "timezone", help="country where the watch is used", type=str)
@@ -346,7 +360,7 @@ if __name__ == "__main__":
     '''
 
     excel_source = filter_work(
-        args.blob_name, blob_storage_connect(args.container_name), args.timezone)
+        args.blob_name, blob_storage_connect(args.project_name, args.container_name), args.timezone)
     # sweetviz 패키지 사용할 경우만 활성화
     # converting_df_to_html(excel_source)
     converting_df_to_excel(excel_source, args.save_filename)

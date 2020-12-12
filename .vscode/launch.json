@@ -11,7 +11,7 @@
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
-            "args": ["2020-12-11", "smartwatchdata", "china", "유효성검사"]
+            "args": ["2020-12-11", "china", "smartwatchdata", "china", "re1212_test"]
         }
     ]
 }
