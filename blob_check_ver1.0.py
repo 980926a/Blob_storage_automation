@@ -5,10 +5,16 @@ import re
 from azure.storage.blob import BlobServiceClient, BlobClient, ContainerClient
 from datetime import datetime
 from pytz import timezone
+from hurry.filesize import size
 # modin 쓰고 싶은데 왜 modin 안되는지 모르겟음 ㅜㅜ
 # 패키지 호환 문제 인듯 pip 내
 import pandas as pd
 import sys
+
+
+# 1216 연결문자열 이랑 스토리지 계정 account name 제대로 검증하고, 제대로 입력 안할때까지 loop에 갇히게 만들어야함
+# 또한 현재 debug 모드에서 가상환경 활성화하면서 계속 연결문자열 input에 들어가는거 해결해야함
+
 
 # 연결문자열 입력 여부 확인 : echo %AZURE_STORAGE_CONNECTION_STRING%
 
@@ -58,12 +64,101 @@ Logic
 
 
 def blob_storage_connect(project, container_name):
-    try:
-        connect_str = os.getenv('AZURE_STORAGE_CONNECTION_STRING')
+    connect_str = os.getenv('AZURE_STORAGE_CONNECTION_STRING')
+    # 비어 있으면
+    if not connect_str:
+        '''
+        class 사용해서 변수 값 초기화 하는 거 __init__
+        magic method 공부할 것
+        '''
+
+        print('등록된 연결 문자열이 없습니다.')
+        connect_str = input("Azure portal 내 해당 스토리지 계정의 연결 문자열을 입력하세요:")
+        if connect_str.startswith('DefaultEndpointsProtocol'):
+            os.system(
+                'setx AZURE_STORAGE_CONNECTION_STRING {}'.format(connect_str))
+            if project == connect_str.split(';')[1].split('=')[-1]:
+                print('{} project에서 데이터를 추출하겠습니다.'.format(project))
+                try:
+                    blob_service_client = BlobServiceClient.from_connection_string(
+                        connect_str)
+                    container_client = blob_service_client.get_container_client(
+                        container_name)
+                    blobs_list = container_client.list_blobs()
+                    return blobs_list
+                except Exception as ex:
+                    print('Exception:')
+                    print(ex)
+            else:
+                print("현재 등록된 연결문자열은 {} project 입니다. 새로운 연결 문자열을 입력해주세요".format(
+                    connect_str.split(';')[1].split('=')[-1]))
+                os.system('setx AZURE_STORAGE_CONNECTION_STRING ""')
+                connect_str = input(
+                    "Azure portal 내 추출을 희망하는 스토리지 계정의 연결 문자열을 입력하세요:")
+                if connect_str.startswith('DefaultEndpointsProtocol'):
+                    os.system(
+                        'setx AZURE_STORAGE_CONNECTION_STRING {}'.format(connect_str))
+                    if project == connect_str.split(';')[1].split('=')[-1]:
+                        print('{} project에서 데이터를 추출하겠습니다.'.format(project))
+                        try:
+                            blob_service_client = BlobServiceClient.from_connection_string(
+                                connect_str)
+                            container_client = blob_service_client.get_container_client(
+                                container_name)
+                            blobs_list = container_client.list_blobs()
+                            return blobs_list
+                        except Exception as ex:
+                            print('Exception:')
+                            print(ex)
+                else:
+                    os.system('setx AZURE_STORAGE_CONNECTION_STRING ""')
+                    # 경우의 수 따져보기
+
+                    connect_str = input("잘못된 연결문자열을 입력하셨습니다. 확인하시고 다시 입력하세요:")
+                    # 입력된 connect_str 값 초기화 해줘야 해야함
+                    os.system(
+                        'setx AZURE_STORAGE_CONNECTION_STRING {}'.format(connect_str))
+                    try:
+                        blob_service_client = BlobServiceClient.from_connection_string(
+                            connect_str)
+                        container_client = blob_service_client.get_container_client(
+                            container_name)
+                        blobs_list = container_client.list_blobs()
+                        return blobs_list
+                    except Exception as ex:
+                        print('Exception:')
+                        print(ex)
+
+                '''
+                # 창을 종료 시켜야 함
+                # python 코드 돌아가는거 멈추고, 창 종료 시켜야 함 1214
+                sys.exit(0)
+                '''
+
+        else:
+            os.system('setx AZURE_STORAGE_CONNECTION_STRING ""')
+
+            # 경우의 수 따져보기
+
+            connect_str = input("잘못된 연결문자열을 입력하셨습니다. 확인하시고 다시 입력하세요:")
+            # 입력된 connect_str 값 초기화 해줘야 해야함
+            os.system(
+                'setx AZURE_STORAGE_CONNECTION_STRING {}'.format(connect_str))
+            try:
+                blob_service_client = BlobServiceClient.from_connection_string(
+                    connect_str)
+                container_client = blob_service_client.get_container_client(
+                    container_name)
+                blobs_list = container_client.list_blobs()
+                return blobs_list
+            except Exception as ex:
+                print('Exception:')
+                print(ex)
+    else:
         print('등록된 연결 문자열이 있습니다.')
         if project == connect_str.split(';')[1].split('=')[-1]:
-            # Create the BlobServiceClient object which will be used to create a container client
             print('{} project에서 데이터를 추출하겠습니다.'.format(project))
+            # Create the BlobServiceClient object which will be used to create a container client
             blob_service_client = BlobServiceClient.from_connection_string(
                 connect_str)
             # Instantiate a ContainerClient
@@ -75,42 +170,9 @@ def blob_storage_connect(project, container_name):
             print("현재 등록된 연결문자열은 {} project 입니다. 새로운 연결 문자열을 입력해주세요".format(
                 connect_str.split(';')[1].split('=')[-1]))
             os.system('setx AZURE_STORAGE_CONNECTION_STRING ""')
-            # 창을 종료 시켜야 함 2020년 오후 3시 7분 우선 장고 공부하다가 다시 할 예정
-    except:
-        '''
-        class 사용해서 변수 값 초기화 하는 거 __init__
-        magic method 공부할 것
-        '''
-
-        print('등록된 연결 문자열이 없습니다.')
-        connect_str = input("Azure portal 내 해당 스토리지 계정의 연결 문자열을 입력하세요:")
-        if connect_str.startswith('DefaultEndpointsProtocol'):
-            os.system(
-                'setx AZURE_STORAGE_CONNECTION_STRING {}'.format(connect_str))
-            try:
-                blob_service_client = BlobServiceClient.from_connection_string(
-                    connect_str)
-                container_client = blob_service_client.get_container_client(
-                    container_name)
-                blobs_list = container_client.list_blobs()
-                return blobs_list
-            except Exception as ex:
-                print('Exception:')
-                print(ex)
-        else:
-            connect_str = input("잘못된 연결문자열을 입력하셨습니다. 확인하시고 다시 입력하세요:")
-            os.system(
-                'setx AZURE_STORAGE_CONNECTION_STRING {}'.format(connect_str))
-            try:
-                blob_service_client = BlobServiceClient.from_connection_string(
-                    connect_str)
-                container_client = blob_service_client.get_container_client(
-                    container_name)
-                blobs_list = container_client.list_blobs()
-                return blobs_list
-            except Exception as ex:
-                print('Exception:')
-                print(ex)
+            # 창을 종료 시켜야 함
+            # python 코드 돌아가는거 멈추고, 창 종료 시켜야 함 1214
+            sys.exit()
 
 # logic A : 입력되어 있는 연결 문자열도 검증
 # logic B : 연결 문자열이 없는 경우는 연결 문자열 입력을 받고, 연결 문자열
@@ -173,159 +235,174 @@ def converting_df_to_html(df):
 
 
 def filter_work(search_word, check_list, country):
+    try:
+        filtered_list = [
+            x for x in check_list if re.match(search_word, x.name)]
+
     # list comprehension , map, reduce, filter, lambda 자유롭게 사용할 수 있도록 익숙해질 것
     # 정규표현식 고도화 필요
     # '2010-01-01/20IHPA' ---> blob 예시
     # [x if re.match(search_word, x.name)for x in check_list ]
     # [x for x in check_list if re.match(search_word, x.name) else pass]
+        for idx, blob_attr in enumerate(filtered_list):
+            if idx+1 == len(filtered_list):  # 마지막 원소
+                watch_sn = blob_attr.name.split('/')[-1].split('_')[0]
+                record_day_null_timezone = blob_attr.name.split(
+                    '/')[-1].split('_')[1]
+                record_time_null_timezone = blob_attr.name.split(
+                    '/')[-1].split('_')[2]
+                # str 타입을 datetime으로 변경
 
-    filtered_list = [x for x in check_list if re.match(search_word, x.name)]
-    for idx, blob_attr in enumerate(filtered_list):
-        if idx+1 == len(filtered_list):  # 마지막 원소
-            watch_sn = blob_attr.name.split('/')[-1].split('_')[0]
-            record_day_null_timezone = blob_attr.name.split(
-                '/')[-1].split('_')[1]
-            record_time_null_timezone = blob_attr.name.split(
-                '/')[-1].split('_')[2]
-            # str 타입을 datetime으로 변경
+                watch_datetime_datetime_null = strdate_to_datetime(
+                    record_day_null_timezone, record_time_null_timezone)
+                # pytz.all_timezones ---- timezone 적용할 수 있는 목록 볼 수 있음
+                # http://abh0518.net/tok/?p=635 ---------- timestamp 같이 활용하는 방안
 
-            watch_datetime_datetime_null = strdate_to_datetime(
-                record_day_null_timezone, record_time_null_timezone)
-            # pytz.all_timezones ---- timezone 적용할 수 있는 목록 볼 수 있음
-            # http://abh0518.net/tok/?p=635 ---------- timestamp 같이 활용하는 방안
+                # watch가 사용중인 시간대를 나라 입력을 받아서 분기 해 줌
+                # 우선은 중국을 default로 설정
+                if country == 'korea':
+                    record_watch_time = timezone('Asia/Seoul')
+                elif country == 'japan':
+                    record_watch_time = timezone('Asia/Tokyo')
+                else:
+                    record_watch_time = timezone('Asia/Shanghai')
 
-            # watch가 사용중인 시간대를 나라 입력을 받아서 분기 해 줌
-            # 우선은 중국을 default로 설정
-            if country == 'korea':
-                record_watch_time = timezone('Asia/Seoul')
-            elif country == 'japan':
-                record_watch_time = timezone('Asia/Tokyo')
+                # watch 시간대에 따라서 변경
+                record_watch_datetime_null = watch_datetime_datetime_null.astimezone(
+                    record_watch_time)
+                str_record_watch_datetime = str(record_watch_datetime_null)
+
+                # beacon 정보
+                beacon_mac_addr_number_4 = blob_attr.name.split(
+                    '/')[-1].split('_')[-1].split('.')[0][8:12]
+
+                # KST 시간대 설정
+                uploaded_Time_UTC = blob_attr.last_modified
+                KST = timezone('Asia/Seoul')
+                uploaded_datetime_KST = uploaded_Time_UTC.astimezone(KST)
+                str_uploaded_datetime_KST = str(uploaded_datetime_KST)
+                upload_day_KST = str_uploaded_datetime_KST.split(' ')[0]
+                upload_time_KST = str_uploaded_datetime_KST.split(
+                    ' ')[-1].split('+')[0]
+                # China 시간대 설정
+                China = timezone('Asia/Shanghai')
+                uploaded_datetime_China = uploaded_Time_UTC.astimezone(China)
+                str_uploaded_datetime_China = str(uploaded_datetime_China)
+                upload_day_China = str_uploaded_datetime_China.split(' ')[0]
+                upload_time_China = str_uploaded_datetime_China.split(
+                    ' ')[-1].split('+')[0]
+                diff_time_calculation = uploaded_datetime_China - record_watch_datetime_null
+                str_diff_time_calcutaion = str(diff_time_calculation)
+
+                # size issue 있어서 신규 개설
+                video_size = size(blob_attr.size)
+
+                # https://www.kite.com/python/answers/how-to-convert-a-timedelta-to-days,-hours,-and-minutes-in-python
+
+                if not beacon_mac_addr_number_4:
+                    beacon_mac_addr_number_4 = 'null'
+                else:
+                    pass
+
+                dataframe_for_file = making_dataframe({'watch_number': watch_sn,
+                                                       'str_record_watch_datetime': str_record_watch_datetime,
+                                                       'record_day_null_timezone': record_day_null_timezone,
+                                                       'record_time_null_timezone': record_time_null_timezone,
+                                                       'beacon_mac_addr_number_4': beacon_mac_addr_number_4,
+                                                       'str_uploaded_datetime_KST': str_uploaded_datetime_KST,
+                                                       'upload_day_KST': upload_day_KST,
+                                                       'upload_time_KST': upload_time_KST,
+                                                       'str_uploaded_datetime_China': str_uploaded_datetime_China,
+                                                       'upload_day_China': upload_day_China,
+                                                       'upload_time_China': upload_time_China,
+                                                       'str_diff_time_calcutaion': str_diff_time_calcutaion,
+                                                       'video_size': video_size})
+                list_of_dataframe.append(dataframe_for_file)
+                # reset_index 설정 해서 index 순서대로 들어간건지 확인 함. 설정해야지 0 , 1, 2, 3 으로 들어가고 설정 안하면 0, 0 ,0 으로 들어감
+                final_dataframe = pd.concat(
+                    list_of_dataframe).reset_index(drop=True)
+                # https://stackoverflow.com/questions/20167930/start-index-at-1-for-pandas-dataframe/45883232
+                final_dataframe.index += 1
+                return final_dataframe
+
             else:
-                record_watch_time = timezone('Asia/Shanghai')
+                watch_sn = blob_attr.name.split('/')[-1].split('_')[0]
+                record_day_null_timezone = blob_attr.name.split(
+                    '/')[-1].split('_')[1]
+                record_time_null_timezone = blob_attr.name.split(
+                    '/')[-1].split('_')[2]
+                # str 타입을 datetime으로 변경
 
-            # watch 시간대에 따라서 변경
-            record_watch_datetime_null = watch_datetime_datetime_null.astimezone(
-                record_watch_time)
-            str_record_watch_datetime = str(record_watch_datetime_null)
+                watch_datetime_datetime_null = strdate_to_datetime(
+                    record_day_null_timezone, record_time_null_timezone)
+                # pytz.all_timezones ---- timezone 적용할 수 있는 목록 볼 수 있음
+                # http://abh0518.net/tok/?p=635 ---------- timestamp 같이 활용하는 방안
 
-            # beacon 정보
-            beacon_mac_addr_number_4 = blob_attr.name.split(
-                '/')[-1].split('_')[-1].split('.')[0][8:12]
+                # watch가 사용중인 시간대를 나라 입력을 받아서 분기 해 줌
+                # 우선은 중국을 default로 설정
+                if country == 'korea':
+                    record_watch_time = timezone('Asia/Seoul')
+                elif country == 'japan':
+                    record_watch_time = timezone('Asia/Tokyo')
+                else:
+                    record_watch_time = timezone('Asia/Shanghai')
 
-            # KST 시간대 설정
-            uploaded_Time_UTC = blob_attr.last_modified
-            KST = timezone('Asia/Seoul')
-            uploaded_datetime_KST = uploaded_Time_UTC.astimezone(KST)
-            str_uploaded_datetime_KST = str(uploaded_datetime_KST)
-            upload_day_KST = str_uploaded_datetime_KST.split(' ')[0]
-            upload_time_KST = str_uploaded_datetime_KST.split(
-                ' ')[-1].split('+')[0]
-            # China 시간대 설정
-            China = timezone('Asia/Shanghai')
-            uploaded_datetime_China = uploaded_Time_UTC.astimezone(China)
-            str_uploaded_datetime_China = str(uploaded_datetime_China)
-            upload_day_China = str_uploaded_datetime_China.split(' ')[0]
-            upload_time_China = str_uploaded_datetime_China.split(
-                ' ')[-1].split('+')[0]
-            diff_time_calculation = uploaded_datetime_China - record_watch_datetime_null
-            str_diff_time_calcutaion = str(diff_time_calculation)
+                # watch 시간대에 따라서 변경
+                record_watch_datetime_null = watch_datetime_datetime_null.astimezone(
+                    record_watch_time)
+                str_record_watch_datetime = str(record_watch_datetime_null)
 
-            # https://www.kite.com/python/answers/how-to-convert-a-timedelta-to-days,-hours,-and-minutes-in-python
+                # beacon 정보
+                beacon_mac_addr_number_4 = blob_attr.name.split(
+                    '/')[-1].split('_')[-1].split('.')[0][8:12]
 
-            if not beacon_mac_addr_number_4:
-                beacon_mac_addr_number_4 = 'null'
-            else:
-                pass
+                # KST 시간대 설정
+                uploaded_Time_UTC = blob_attr.last_modified
+                KST = timezone('Asia/Seoul')
+                uploaded_datetime_KST = uploaded_Time_UTC.astimezone(KST)
+                str_uploaded_datetime_KST = str(uploaded_datetime_KST)
+                upload_day_KST = str_uploaded_datetime_KST.split(' ')[0]
+                upload_time_KST = str_uploaded_datetime_KST.split(
+                    ' ')[-1].split('+')[0]
+                # China 시간대 설정
+                China = timezone('Asia/Shanghai')
+                uploaded_datetime_China = uploaded_Time_UTC.astimezone(China)
+                str_uploaded_datetime_China = str(uploaded_datetime_China)
+                upload_day_China = str_uploaded_datetime_China.split(' ')[0]
+                upload_time_China = str_uploaded_datetime_China.split(
+                    ' ')[-1].split('+')[0]
+                diff_time_calculation = uploaded_datetime_China - record_watch_datetime_null
+                str_diff_time_calcutaion = str(diff_time_calculation)
 
-            dataframe_for_file = making_dataframe({'watch_number': watch_sn,
-                                                   'str_record_watch_datetime': str_record_watch_datetime,
-                                                   'record_day_null_timezone': record_day_null_timezone,
-                                                   'record_time_null_timezone': record_time_null_timezone,
-                                                   'beacon_mac_addr_number_4': beacon_mac_addr_number_4,
-                                                   'str_uploaded_datetime_KST': str_uploaded_datetime_KST,
-                                                   'upload_day_KST': upload_day_KST,
-                                                   'upload_time_KST': upload_time_KST,
-                                                   'str_uploaded_datetime_China': str_uploaded_datetime_China,
-                                                   'upload_day_China': upload_day_China,
-                                                   'upload_time_China': upload_time_China,
-                                                   'str_diff_time_calcutaion': str_diff_time_calcutaion, })
-            list_of_dataframe.append(dataframe_for_file)
-            # reset_index 설정 해서 index 순서대로 들어간건지 확인 함. 설정해야지 0 , 1, 2, 3 으로 들어가고 설정 안하면 0, 0 ,0 으로 들어감
-            final_dataframe = pd.concat(
-                list_of_dataframe).reset_index(drop=True)
-            # https://stackoverflow.com/questions/20167930/start-index-at-1-for-pandas-dataframe/45883232
-            final_dataframe.index += 1
-            return final_dataframe
+                # size issue 있어서 신규 개설
+                video_size = size(blob_attr.size)
 
-        else:
-            watch_sn = blob_attr.name.split('/')[-1].split('_')[0]
-            record_day_null_timezone = blob_attr.name.split(
-                '/')[-1].split('_')[1]
-            record_time_null_timezone = blob_attr.name.split(
-                '/')[-1].split('_')[2]
-            # str 타입을 datetime으로 변경
+                # https://www.kite.com/python/answers/how-to-convert-a-timedelta-to-days,-hours,-and-minutes-in-python
 
-            watch_datetime_datetime_null = strdate_to_datetime(
-                record_day_null_timezone, record_time_null_timezone)
-            # pytz.all_timezones ---- timezone 적용할 수 있는 목록 볼 수 있음
-            # http://abh0518.net/tok/?p=635 ---------- timestamp 같이 활용하는 방안
+                if not beacon_mac_addr_number_4:
+                    beacon_mac_addr_number_4 = 'null'
+                else:
+                    pass
 
-            # watch가 사용중인 시간대를 나라 입력을 받아서 분기 해 줌
-            # 우선은 중국을 default로 설정
-            if country == 'korea':
-                record_watch_time = timezone('Asia/Seoul')
-            elif country == 'japan':
-                record_watch_time = timezone('Asia/Tokyo')
-            else:
-                record_watch_time = timezone('Asia/Shanghai')
-
-            # watch 시간대에 따라서 변경
-            record_watch_datetime_null = watch_datetime_datetime_null.astimezone(
-                record_watch_time)
-            str_record_watch_datetime = str(record_watch_datetime_null)
-
-            # beacon 정보
-            beacon_mac_addr_number_4 = blob_attr.name.split(
-                '/')[-1].split('_')[-1].split('.')[0][8:12]
-
-            # KST 시간대 설정
-            uploaded_Time_UTC = blob_attr.last_modified
-            KST = timezone('Asia/Seoul')
-            uploaded_datetime_KST = uploaded_Time_UTC.astimezone(KST)
-            str_uploaded_datetime_KST = str(uploaded_datetime_KST)
-            upload_day_KST = str_uploaded_datetime_KST.split(' ')[0]
-            upload_time_KST = str_uploaded_datetime_KST.split(
-                ' ')[-1].split('+')[0]
-            # China 시간대 설정
-            China = timezone('Asia/Shanghai')
-            uploaded_datetime_China = uploaded_Time_UTC.astimezone(China)
-            str_uploaded_datetime_China = str(uploaded_datetime_China)
-            upload_day_China = str_uploaded_datetime_China.split(' ')[0]
-            upload_time_China = str_uploaded_datetime_China.split(
-                ' ')[-1].split('+')[0]
-            diff_time_calculation = uploaded_datetime_China - record_watch_datetime_null
-            str_diff_time_calcutaion = str(diff_time_calculation)
-
-            # https://www.kite.com/python/answers/how-to-convert-a-timedelta-to-days,-hours,-and-minutes-in-python
-
-            if not beacon_mac_addr_number_4:
-                beacon_mac_addr_number_4 = 'null'
-            else:
-                pass
-
-            dataframe_for_file = making_dataframe({'watch_number': watch_sn,
-                                                   'str_record_watch_datetime': str_record_watch_datetime,
-                                                   'record_day_null_timezone': record_day_null_timezone,
-                                                   'record_time_null_timezone': record_time_null_timezone,
-                                                   'beacon_mac_addr_number_4': beacon_mac_addr_number_4,
-                                                   'str_uploaded_datetime_KST': str_uploaded_datetime_KST,
-                                                   'upload_day_KST': upload_day_KST,
-                                                   'upload_time_KST': upload_time_KST,
-                                                   'str_uploaded_datetime_China': str_uploaded_datetime_China,
-                                                   'upload_day_China': upload_day_China,
-                                                   'upload_time_China': upload_time_China,
-                                                   'str_diff_time_calcutaion': str_diff_time_calcutaion, })
-            list_of_dataframe.append(dataframe_for_file)
+                dataframe_for_file = making_dataframe({'watch_number': watch_sn,
+                                                       'str_record_watch_datetime': str_record_watch_datetime,
+                                                       'record_day_null_timezone': record_day_null_timezone,
+                                                       'record_time_null_timezone': record_time_null_timezone,
+                                                       'beacon_mac_addr_number_4': beacon_mac_addr_number_4,
+                                                       'str_uploaded_datetime_KST': str_uploaded_datetime_KST,
+                                                       'upload_day_KST': upload_day_KST,
+                                                       'upload_time_KST': upload_time_KST,
+                                                       'str_uploaded_datetime_China': str_uploaded_datetime_China,
+                                                       'upload_day_China': upload_day_China,
+                                                       'upload_time_China': upload_time_China,
+                                                       'str_diff_time_calcutaion': str_diff_time_calcutaion,
+                                                       'video_size': video_size})
+                list_of_dataframe.append(dataframe_for_file)
+    except Exception as ex:
+        print('Exception:')
+        print(ex)
+        print('데이터 여부를 확인해주세요!')
+        sys.exit(0)
 
 
 if __name__ == "__main__":
@@ -363,5 +440,10 @@ if __name__ == "__main__":
         args.blob_name, blob_storage_connect(args.project_name, args.container_name), args.timezone)
     # sweetviz 패키지 사용할 경우만 활성화
     # converting_df_to_html(excel_source)
+
+    '''
+    윗부분에서 데이터 없어서 오류 나면 excel 만드는 함수 실행안하도록 해야함
+    '''
+
     converting_df_to_excel(excel_source, args.save_filename)
     # twine을 이용한 패키지 배포
